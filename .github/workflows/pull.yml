@@ -27,25 +27,36 @@ jobs:
           script: |
             const [owner, repo] = '${{ github.event.inputs.repo }}'.split('/');
             
+            console.log(`Fetching artifacts from ${owner}/${repo} run #${{ github.event.inputs.run_id }}`);
+            
             const artifacts = await github.rest.actions.listWorkflowRunArtifacts({
               owner: owner,
               repo: repo,
               run_id: ${{ github.event.inputs.run_id }}
             });
             
+            console.log(`Found ${artifacts.data.artifacts.length} total artifacts`);
+            
             const updaterArtifacts = artifacts.data.artifacts.filter(
               artifact => artifact.name.toLowerCase().includes('updater')
             );
             
+            console.log(`Found ${updaterArtifacts.length} updater artifacts:`);
+            updaterArtifacts.forEach(a => console.log(`- ${a.name} (${a.size_in_bytes} bytes)`));
+            
             let detectedVersion = null;
             
             for (const artifact of updaterArtifacts) {
+              console.log(`\nProcessing artifact: ${artifact.name}`);
+              
               const download = await github.rest.actions.downloadArtifact({
                 owner: owner,
                 repo: repo,
                 artifact_id: artifact.id,
                 archive_format: 'zip'
               });
+              
+              console.log(`Downloaded ${artifact.name} (${download.data.length} bytes)`);
               
               const fs = require('fs');
               const path = require('path');
@@ -54,50 +65,63 @@ jobs:
               const tempDir = 'temp_extract';
               if (!fs.existsSync(tempDir)) {
                 fs.mkdirSync(tempDir);
+                console.log('Created temp directory for extraction');
               }
               
               // Save and extract first zip to detect version
               if (!detectedVersion) {
                 const tempPath = path.join(tempDir, 'temp.zip');
                 fs.writeFileSync(tempPath, Buffer.from(download.data));
+                console.log('Saved temporary zip file');
                 
                 // Extract and look for version info
                 require('child_process').execSync(`unzip -o "${tempPath}" -d ${tempDir}`);
+                console.log('Extracted zip contents');
                 
                 // Look for files matching the pattern Qopy-v*.* in the extracted contents
                 const files = fs.readdirSync(tempDir, { recursive: true });
+                console.log('\nSearching for version in files:');
+                files.forEach(f => console.log(`- ${f}`));
+                
                 for (const file of files) {
                   const versionMatch = file.match(/Qopy-v([0-9]+\.[0-9]+\.[0-9]+)/i);
                   if (versionMatch) {
                     detectedVersion = 'v' + versionMatch[1];
+                    console.log(`\nDetected version: ${detectedVersion} from file: ${file}`);
                     break;
                   }
                 }
                 
                 // Cleanup temp
                 fs.rmSync(tempDir, { recursive: true, force: true });
+                console.log('Cleaned up temp directory');
               }
               
               // Use provided version or detected version
               const versionDir = '${{ github.event.inputs.version }}' || detectedVersion;
+              console.log(`\nUsing version directory: ${versionDir}`);
               
               if (!versionDir) {
+                console.log('ERROR: No version could be detected or provided');
                 core.setFailed('Could not detect version and no version was provided');
                 return;
               }
               
               // Check if version already exists
               if (fs.existsSync(versionDir)) {
+                console.log(`ERROR: Version ${versionDir} already exists`);
                 core.setFailed(`Version ${versionDir} already exists. Skipping to prevent overwrite.`);
                 return;
               }
               
               // Create version directory and continue with artifact saving
               fs.mkdirSync(versionDir);
+              console.log(`Created version directory: ${versionDir}`);
               
               // Save the zip file
               const artifactPath = path.join(versionDir, `${artifact.name}.zip`);
               fs.writeFileSync(artifactPath, Buffer.from(download.data));
+              console.log(`Saved artifact to: ${artifactPath}`);
             }
 
       - name: Extract artifacts
