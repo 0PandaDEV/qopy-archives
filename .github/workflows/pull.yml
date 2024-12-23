@@ -100,13 +100,35 @@ jobs:
                 files.forEach(f => console.log(`- ${f}`));
                 
                 for (const file of files) {
+                  console.log(`\nChecking file: ${file}`);
+                  console.log(`Running regex test on filename`);
+                  
+                  // Log the regex pattern we're using
+                  console.log(`Using regex pattern: /Qopy-v([0-9]+\.[0-9]+\.[0-9]+)/i`);
+                  
                   const versionMatch = file.match(/Qopy-v([0-9]+\.[0-9]+\.[0-9]+)/i);
+                  console.log(`Match result:`, versionMatch);
+                  
                   if (versionMatch) {
                     detectedVersion = 'v' + versionMatch[1];
-                    console.log(`\nDetected version: ${detectedVersion} from file: ${file}`);
+                    console.log(`SUCCESS: Detected version: ${detectedVersion} from file: ${file}`);
                     break;
+                  } else {
+                    // Try alternative pattern without 'v'
+                    console.log(`Trying alternative pattern: /Qopy-([0-9]+\.[0-9]+\.[0-9]+)/i`);
+                    const altMatch = file.match(/Qopy-([0-9]+\.[0-9]+\.[0-9]+)/i);
+                    console.log(`Alternative match result:`, altMatch);
+                    
+                    if (altMatch) {
+                      detectedVersion = 'v' + altMatch[1];
+                      console.log(`SUCCESS: Detected version: ${detectedVersion} from file: ${file}`);
+                      break;
+                    }
                   }
+                  console.log(`No version match found in this file`);
                 }
+                
+                console.log(`\nFinal detected version: ${detectedVersion}`);
                 
                 // Cleanup temp
                 fs.rmSync(tempDir, { recursive: true, force: true });
