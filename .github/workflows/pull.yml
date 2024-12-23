@@ -182,7 +182,8 @@ jobs:
             VERSION_DIR=$(ls -d v* | head -n 1)
           fi
           cd "$VERSION_DIR"
-          for zip in *.zip; do
+          for zip in updater-*.zip; do
+            echo "Extracting $zip"
             unzip -o "$zip" -d "${zip%.zip}"
             rm "$zip"
           done
