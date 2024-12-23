@@ -45,9 +45,13 @@ jobs:
             updaterArtifacts.forEach(a => console.log(`- ${a.name} (${a.size_in_bytes} bytes)`));
             
             let detectedVersion = null;
+            let versionDir = null;
             
+            // First pass - detect version
             for (const artifact of updaterArtifacts) {
-              console.log(`\nProcessing artifact: ${artifact.name}`);
+              if (detectedVersion) break; // Skip if we already found the version
+              
+              console.log(`\nChecking artifact for version: ${artifact.name}`);
               
               const download = await github.rest.actions.downloadArtifact({
                 owner: owner,
@@ -134,27 +138,39 @@ jobs:
                 fs.rmSync(tempDir, { recursive: true, force: true });
                 console.log('Cleaned up temp directory');
               }
+            }
+            
+            // Use provided version or detected version
+            versionDir = '${{ github.event.inputs.version }}' || detectedVersion;
+            console.log(`\nUsing version directory: ${versionDir}`);
+            
+            if (!versionDir) {
+              console.log('ERROR: No version could be detected or provided');
+              core.setFailed('Could not detect version and no version was provided');
+              return;
+            }
+            
+            // Check if version already exists
+            if (fs.existsSync(versionDir)) {
+              console.log(`ERROR: Version ${versionDir} already exists`);
+              core.setFailed(`Version ${versionDir} already exists. Skipping to prevent overwrite.`);
+              return;
+            }
+            
+            // Create version directory once
+            fs.mkdirSync(versionDir);
+            console.log(`Created version directory: ${versionDir}`);
+            
+            // Second pass - save all artifacts
+            for (const artifact of updaterArtifacts) {
+              console.log(`\nProcessing artifact: ${artifact.name}`);
               
-              // Use provided version or detected version
-              const versionDir = '${{ github.event.inputs.version }}' || detectedVersion;
-              console.log(`\nUsing version directory: ${versionDir}`);
-              
-              if (!versionDir) {
-                console.log('ERROR: No version could be detected or provided');
-                core.setFailed('Could not detect version and no version was provided');
-                return;
-              }
-              
-              // Check if version already exists
-              if (fs.existsSync(versionDir)) {
-                console.log(`ERROR: Version ${versionDir} already exists`);
-                core.setFailed(`Version ${versionDir} already exists. Skipping to prevent overwrite.`);
-                return;
-              }
-              
-              // Create version directory and continue with artifact saving
-              fs.mkdirSync(versionDir);
-              console.log(`Created version directory: ${versionDir}`);
+              const download = await github.rest.actions.downloadArtifact({
+                owner: owner,
+                repo: repo,
+                artifact_id: artifact.id,
+                archive_format: 'zip'
+              });
               
               // Save the zip file
               const artifactPath = path.join(versionDir, `${artifact.name}.zip`);
