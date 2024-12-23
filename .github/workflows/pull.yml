@@ -3,6 +3,10 @@ name: Pull Updater Artifacts
 on:
   workflow_dispatch:
     inputs:
+      repo:
+        description: 'Repository to pull artifacts from (format: owner/repo)'
+        required: true
+        default: '0PandaDEV/Qopy'
       run_id:
         description: 'Action run ID to pull artifacts from'
         required: true
@@ -21,9 +25,11 @@ jobs:
         uses: actions/github-script@v7
         with:
           script: |
+            const [owner, repo] = '${{ github.event.inputs.repo }}'.split('/');
+            
             const artifacts = await github.rest.actions.listWorkflowRunArtifacts({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
+              owner: owner,
+              repo: repo,
               run_id: ${{ github.event.inputs.run_id }}
             });
             
@@ -35,8 +41,8 @@ jobs:
             
             for (const artifact of updaterArtifacts) {
               const download = await github.rest.actions.downloadArtifact({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
+                owner: owner,
+                repo: repo,
                 artifact_id: artifact.id,
                 archive_format: 'zip'
               });
