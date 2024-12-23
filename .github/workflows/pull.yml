@@ -181,11 +181,16 @@ jobs:
           if [ -z "$VERSION_DIR" ]; then
             VERSION_DIR=$(ls -d v* | head -n 1)
           fi
+          echo "Entering directory: $VERSION_DIR"
           cd "$VERSION_DIR"
-          for zip in updater-*.zip; do
-            echo "Extracting $zip"
-            unzip -o "$zip" -d "${zip%.zip}"
-            rm "$zip"
+          echo "Current directory contents:"
+          ls -la
+          for file in updater-macos-silicon.zip updater-ubuntu.zip updater-macos-intel.zip updater-windows-x64.zip updater-windows-arm64.zip; do
+            if [ -f "$file" ]; then
+              echo "Extracting $file"
+              unzip -o "$file" -d "${file%.zip}"
+              rm "$file"
+            fi
           done
 
       - name: Commit and push changes
