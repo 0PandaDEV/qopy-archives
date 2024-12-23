@@ -79,7 +79,23 @@ jobs:
                 console.log('Extracted zip contents');
                 
                 // Look for files matching the pattern Qopy-v*.* in the extracted contents
-                const files = fs.readdirSync(tempDir, { recursive: true });
+                const getAllFiles = (dir) => {
+                  const files = fs.readdirSync(dir, { withFileTypes: true });
+                  let fileList = [];
+                  
+                  for (const file of files) {
+                    const fullPath = path.join(dir, file.name);
+                    if (file.isDirectory()) {
+                      fileList = fileList.concat(getAllFiles(fullPath));
+                    } else {
+                      fileList.push(fullPath);
+                    }
+                  }
+                  
+                  return fileList;
+                };
+                
+                const files = getAllFiles(tempDir);
                 console.log('\nSearching for version in files:');
                 files.forEach(f => console.log(`- ${f}`));
                 
