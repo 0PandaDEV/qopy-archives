@@ -64,29 +64,13 @@ jobs:
                 // Extract and look for version info
                 require('child_process').execSync(`unzip -o "${tempPath}" -d ${tempDir}`);
                 
-                // Try to find version from various files
-                const possibleFiles = ['latest.yml', 'version.txt', 'package.json'];
-                for (const file of possibleFiles) {
-                  const filePath = path.join(tempDir, file);
-                  if (fs.existsSync(filePath)) {
-                    const content = fs.readFileSync(filePath, 'utf8');
-                    let versionMatch;
-                    
-                    if (file === 'latest.yml') {
-                      versionMatch = content.match(/version:\s*(.+)/);
-                    } else if (file === 'package.json') {
-                      const pkg = JSON.parse(content);
-                      versionMatch = pkg.version ? [null, pkg.version] : null;
-                    } else {
-                      versionMatch = content.trim().match(/(.+)/);
-                    }
-                    
-                    if (versionMatch) {
-                      detectedVersion = versionMatch[1].startsWith('v') ? 
-                        versionMatch[1].trim() : 
-                        'v' + versionMatch[1].trim();
-                      break;
-                    }
+                // Look for files matching the pattern Qopy-v*.* in the extracted contents
+                const files = fs.readdirSync(tempDir, { recursive: true });
+                for (const file of files) {
+                  const versionMatch = file.match(/Qopy-v([0-9]+\.[0-9]+\.[0-9]+)/i);
+                  if (versionMatch) {
+                    detectedVersion = 'v' + versionMatch[1];
+                    break;
                   }
                 }
                 
