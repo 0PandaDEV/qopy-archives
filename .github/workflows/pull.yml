@@ -73,9 +73,15 @@ jobs:
               
               // Use provided version or detected version
               const versionDir = '${{ github.event.inputs.version }}' || detectedVersion || 'unknown_version';
-              if (!fs.existsSync(versionDir)) {
-                fs.mkdirSync(versionDir);
+              
+              // Check if version already exists
+              if (fs.existsSync(versionDir)) {
+                core.setFailed(`Version ${versionDir} already exists. Skipping to prevent overwrite.`);
+                return;
               }
+              
+              // Create version directory and continue with artifact saving
+              fs.mkdirSync(versionDir);
               
               // Save the zip file
               const artifactPath = path.join(versionDir, `${artifact.name}.zip`);
@@ -88,6 +94,7 @@ jobs:
             }
 
       - name: Extract artifacts
+        if: success()
         run: |
           VERSION_DIR="${{ github.event.inputs.version }}"
           if [ -z "$VERSION_DIR" ]; then
@@ -100,6 +107,7 @@ jobs:
           done
 
       - name: Commit and push changes
+        if: success()
         run: |
           VERSION_DIR="${{ github.event.inputs.version }}"
           if [ -z "$VERSION_DIR" ]; then
