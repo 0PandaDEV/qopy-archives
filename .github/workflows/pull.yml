@@ -202,4 +202,7 @@ jobs:
           git add .
           git status
           git commit -m "Add updater files for $VERSION_DIR"
+          
+          # Use GITHUB_TOKEN for authentication
+          git remote set-url origin https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}
           git push
