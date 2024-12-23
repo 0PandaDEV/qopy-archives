@@ -1,0 +1,112 @@
+name: Pull Updater Artifacts
+
+on:
+  workflow_dispatch:
+    inputs:
+      run_id:
+        description: 'Action run ID to pull artifacts from'
+        required: true
+      version:
+        description: 'Version number (optional, will be determined from files if not provided)'
+        required: false
+
+jobs:
+  pull-artifacts:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Download artifacts
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const artifacts = await github.rest.actions.listWorkflowRunArtifacts({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              run_id: ${{ github.event.inputs.run_id }}
+            });
+            
+            const updaterArtifacts = artifacts.data.artifacts.filter(
+              artifact => artifact.name.toLowerCase().includes('updater')
+            );
+            
+            let detectedVersion = null;
+            
+            for (const artifact of updaterArtifacts) {
+              const download = await github.rest.actions.downloadArtifact({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                artifact_id: artifact.id,
+                archive_format: 'zip'
+              });
+              
+              const fs = require('fs');
+              const path = require('path');
+              
+              // Create temporary directory for version detection
+              const tempDir = 'temp_extract';
+              if (!fs.existsSync(tempDir)) {
+                fs.mkdirSync(tempDir);
+              }
+              
+              // Save and extract first zip to detect version
+              if (!detectedVersion) {
+                const tempPath = path.join(tempDir, 'temp.zip');
+                fs.writeFileSync(tempPath, Buffer.from(download.data));
+                
+                // Extract and look for version info
+                require('child_process').execSync(`unzip -o "${tempPath}" -d ${tempDir}`);
+                
+                // Try to find version from latest.yml or other version files
+                if (fs.existsSync(path.join(tempDir, 'latest.yml'))) {
+                  const content = fs.readFileSync(path.join(tempDir, 'latest.yml'), 'utf8');
+                  const versionMatch = content.match(/version:\s*(.+)/);
+                  if (versionMatch) {
+                    detectedVersion = 'v' + versionMatch[1].trim();
+                  }
+                }
+                
+                // Cleanup temp
+                fs.rmSync(tempDir, { recursive: true, force: true });
+              }
+              
+              // Use provided version or detected version
+              const versionDir = '${{ github.event.inputs.version }}' || detectedVersion || 'unknown_version';
+              if (!fs.existsSync(versionDir)) {
+                fs.mkdirSync(versionDir);
+              }
+              
+              // Save the zip file
+              const artifactPath = path.join(versionDir, `${artifact.name}.zip`);
+              fs.writeFileSync(artifactPath, Buffer.from(download.data));
+            }
+            
+            if (!detectedVersion && !('${{ github.event.inputs.version }}')) {
+              core.setFailed('Could not detect version and no version was provided');
+              return;
+            }
+
+      - name: Extract artifacts
+        run: |
+          VERSION_DIR="${{ github.event.inputs.version }}"
+          if [ -z "$VERSION_DIR" ]; then
+            VERSION_DIR=$(ls -d v* | head -n 1)
+          fi
+          cd "$VERSION_DIR"
+          for zip in *.zip; do
+            unzip -o "$zip" -d "${zip%.zip}"
+            rm "$zip"
+          done
+
+      - name: Commit and push changes
+        run: |
+          VERSION_DIR="${{ github.event.inputs.version }}"
+          if [ -z "$VERSION_DIR" ]; then
+            VERSION_DIR=$(ls -d v* | head -n 1)
+          fi
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          git add "$VERSION_DIR"
+          git commit -m "Add updater files for $VERSION_DIR"
+          git push
