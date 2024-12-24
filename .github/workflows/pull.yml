@@ -180,7 +180,8 @@ jobs:
         run: |
           VERSION_DIR="${{ github.event.inputs.version }}"
           if [ -z "$VERSION_DIR" ]; then
-            VERSION_DIR=$(ls -d v* | head -n 1)
+            # Look for the newest version directory
+            VERSION_DIR=$(ls -d v* | sort -V | tail -n 1)
           fi
           echo "Version directory: $VERSION_DIR"
           
@@ -192,19 +193,13 @@ jobs:
           echo "Current directory ($VERSION_DIR) contents:"
           ls -la
           
-          # Show parent directory contents
-          echo "Parent directory contents:"
-          ls -la ..
-          
           echo "Extracting updater archives..."
-          for file in ../updater-*.zip; do
+          for file in *.zip; do
             if [ -f "$file" ]; then
               echo "Found zip file: $file"
               echo "Extracting $file"
               unzip -o "$file"
               rm "$file"
-            else
-              echo "File not found: $file"
             fi
           done
           
@@ -214,6 +209,11 @@ jobs:
       - name: Commit and push changes
         if: success()
         run: |
+          VERSION_DIR="${{ github.event.inputs.version }}"
+          if [ -z "$VERSION_DIR" ]; then
+            VERSION_DIR=$(ls -d v* | sort -V | tail -n 1)
+          fi
+          
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
           git config --local user.name "github-actions[bot]"
           
