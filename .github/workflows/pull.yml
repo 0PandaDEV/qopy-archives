@@ -184,16 +184,12 @@ jobs:
           if [ -z "$VERSION_DIR" ]; then
             VERSION_DIR=$(ls -d v* | head -n 1)
           fi
-          echo "Entering directory: $VERSION_DIR"
           cd "$VERSION_DIR"
-          echo "Current directory contents:"
+          for file in *.zip; do
+            echo "Extracting $file"
+            unzip -o "$file"
+            rm "$file"
           ls -la
-          for file in updater-macos-silicon.zip updater-ubuntu.zip updater-macos-intel.zip updater-windows-x64.zip updater-windows-arm64.zip; do
-            if [ -f "$file" ]; then
-              echo "Extracting $file"
-              unzip -o "$file" -d "${file%.zip}"
-              rm "$file"
-            fi
           done
 
       - name: Commit and push changes
@@ -206,6 +202,5 @@ jobs:
           git status
           git commit -m "Add updater files for $VERSION_DIR"
           
-          # Use GITHUB_TOKEN for authentication
           git remote set-url origin https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}
           git push
