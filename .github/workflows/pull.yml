@@ -149,16 +149,17 @@ jobs:
               return;
             }
             
-            // Check if version already exists
-            if (fs.existsSync(versionDir)) {
-              console.log(`ERROR: Version ${versionDir} already exists`);
-              core.setFailed(`Version ${versionDir} already exists. Skipping to prevent overwrite.`);
-              return;
+            // Create version directory if it doesn't exist
+            if (!fs.existsSync(versionDir)) {
+              fs.mkdirSync(versionDir);
+              console.log(`Created version directory: ${versionDir}`);
+            } else {
+              console.log(`Version directory ${versionDir} exists, updating contents...`);
+              // Clean existing directory
+              fs.readdirSync(versionDir).forEach(file => {
+                fs.unlinkSync(path.join(versionDir, file));
+              });
             }
-            
-            // Create version directory once
-            fs.mkdirSync(versionDir);
-            console.log(`Created version directory: ${versionDir}`);
             
             // Second pass - save all artifacts
             for (const artifact of updaterArtifacts) {
