@@ -186,12 +186,13 @@ jobs:
             VERSION_DIR=$(ls -d v* | head -n 1)
           fi
           cd "$VERSION_DIR"
-          for file in *.zip; do
+          ls -la
+          for file in updater-*.zip; do
             echo "Extracting $file"
             unzip -o "$file"
             rm "$file"
-          ls -la
           done
+          ls -la
 
       - name: Commit and push changes
         if: success()
