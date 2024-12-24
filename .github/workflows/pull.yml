@@ -155,13 +155,10 @@ jobs:
               console.log(`Created version directory: ${versionDir}`);
             } else {
               console.log(`Version directory ${versionDir} exists, updating contents...`);
-              // Clean existing directory
-              fs.readdirSync(versionDir).forEach(file => {
-                fs.unlinkSync(path.join(versionDir, file));
-              });
+              // Don't clean the directory here anymore
             }
             
-            // Second pass - save all artifacts
+            // Save all artifacts
             for (const artifact of updaterArtifacts) {
               console.log(`\nProcessing artifact: ${artifact.name}`);
               
