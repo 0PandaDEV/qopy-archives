@@ -182,13 +182,24 @@ jobs:
           if [ -z "$VERSION_DIR" ]; then
             VERSION_DIR=$(ls -d v* | head -n 1)
           fi
-          cd "$VERSION_DIR"
-          echo "Current directory contents:"
+          echo "Version directory: $VERSION_DIR"
+          
+          # Show root directory contents
+          echo "Root directory contents:"
           ls -la
           
+          cd "$VERSION_DIR"
+          echo "Current directory ($VERSION_DIR) contents:"
+          ls -la
+          
+          # Show parent directory contents
+          echo "Parent directory contents:"
+          ls -la ..
+          
           echo "Extracting updater archives..."
-          for file in updater-macos-silicon.zip updater-ubuntu.zip updater-macos-intel.zip updater-windows-x64.zip updater-windows-arm64.zip; do
+          for file in ../updater-*.zip; do
             if [ -f "$file" ]; then
+              echo "Found zip file: $file"
               echo "Extracting $file"
               unzip -o "$file"
               rm "$file"
