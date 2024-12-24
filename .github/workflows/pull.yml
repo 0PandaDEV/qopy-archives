@@ -186,12 +186,21 @@ jobs:
             VERSION_DIR=$(ls -d v* | head -n 1)
           fi
           cd "$VERSION_DIR"
+          echo "Current directory contents:"
           ls -la
-          for file in updater-*.zip; do
-            echo "Extracting $file"
-            unzip -o "$file"
-            rm "$file"
+          
+          echo "Extracting updater archives..."
+          for file in updater-macos-silicon.zip updater-ubuntu.zip updater-macos-intel.zip updater-windows-x64.zip updater-windows-arm64.zip; do
+            if [ -f "$file" ]; then
+              echo "Extracting $file"
+              unzip -o "$file"
+              rm "$file"
+            else
+              echo "File not found: $file"
+            fi
           done
+          
+          echo "Final directory contents:"
           ls -la
 
       - name: Commit and push changes
